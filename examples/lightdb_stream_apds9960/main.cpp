@@ -1,4 +1,4 @@
-#include <Arduino.h>
+#include <SparkFun_APDS9960.h>
 #ifdef ARDUINO_SAMD_MKR1010
 #include <WiFiNINA.h>
 #endif
@@ -6,10 +6,13 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #endif
+#include <Arduino.h>
 #include <ArduinoJson.h>
 #include <Golioth.h>
 
 #include "secrets.h"
+
+SparkFun_APDS9960 apds = SparkFun_APDS9960();
 
 #define LED0 5
 #define LED1 4
@@ -28,41 +31,6 @@ GoliothClient *client = GoliothClient::getInstance();
 unsigned long lastMillis = 0;
 unsigned long counter = 0;
 
-void onLightDBMessage(String path, String payload)
-{
-  Serial.println("incoming: " + path + " - " + payload);
-  if (path.endsWith("led"))
-  {
-    StaticJsonDocument<256> doc;
-    deserializeJson(doc, payload);
-    JsonObject root = doc.as<JsonObject>();
-    for (JsonPair kv : root)
-    {
-      bool value = kv.value().as<bool>();
-      if (strcmp(kv.key().c_str(), "0") == 0)
-      {
-        Serial.println("Changing LED0");
-        digitalWrite(LED0, value ? HIGH : LOW);
-      }
-      if (strcmp(kv.key().c_str(), "1") == 0)
-      {
-        Serial.println("Changing LED1");
-        digitalWrite(LED1, value ? HIGH : LOW);
-      }
-      if (strcmp(kv.key().c_str(), "2") == 0)
-      {
-        Serial.println("Changing LED2");
-        digitalWrite(LED2, value ? HIGH : LOW);
-      }
-      if (strcmp(kv.key().c_str(), "3") == 0)
-      {
-        Serial.println("Changing LED3");
-        digitalWrite(LED3, value ? HIGH : LOW);
-      }
-    }
-  }
-}
-
 void connect()
 {
   Serial.print("checking wifi...");
@@ -79,7 +47,7 @@ void connect()
     delay(1000);
     tries++;
   }
-  Serial.println("\nconnected to WiFi!\n");
+  Serial.println("Connected to WiFi!");
 
   Serial.println("connecting to broker...");
   tries = 0;
@@ -99,26 +67,27 @@ void connect()
     tries++;
   }
 
-  Serial.println("Connected to MQTT");
+  Serial.println("Connected to Golioth");
 
   client->onHello([](String name)
                   { Serial.println(name); });
   client->listenHello();
-  client->onLightDBMessage(onLightDBMessage);
-  client->listenLightDBStateAtPath("/led");
 }
 
 void setup()
 {
   Serial.begin(115200);
-  pinMode(LED0, OUTPUT);
-  pinMode(LED1, OUTPUT);
-  pinMode(LED2, OUTPUT);
-  pinMode(LED3, OUTPUT);
-  digitalWrite(LED0, LOW);
-  digitalWrite(LED1, LOW);
-  digitalWrite(LED2, LOW);
-  digitalWrite(LED3, LOW);
+  if (apds.init())
+  {
+    Serial.println(F("APDS-9960 initialization complete"));
+  }
+  else
+  {
+    Serial.println(F("Something went wrong during APDS-9960 init!"));
+  }
+  apds.enableLightSensor(false);
+  apds.enableProximitySensor(false);
+  apds.setProximityGain(PGAIN_2X);
 
   connect();
 }
@@ -136,7 +105,23 @@ void loop()
   {
     lastMillis = millis();
     counter++;
-    client->setLightDBStateAtPath("/counter", String(counter).c_str());
+    uint8_t proximity = 0;
+    uint16_t lux = 0;
+    uint16_t r = 0;
+    uint16_t g = 0;
+    uint16_t b = 0;
+    apds.readProximity(proximity);
+    apds.readRedLight(r);
+    apds.readGreenLight(g);
+    apds.readBlueLight(b);
+    apds.readAmbientLight(lux);
+    String historicalData = "{\"lux\":" + String(lux) + ", \"proximity\":" + String(proximity) + ", \"r\":" + String(r) + ", \"g\":" + String(g) + ", \"b\":" + String(b) + "}";
+    String rtData = "{\"counter\":" + String(counter) + ",\"env\":" + historicalData + "}";
+    Serial.println("Updating `state` to " + rtData);
+    Serial.println("Sending timeseries " + historicalData);
+
+    client->setLightDBStateAtPath("/", rtData.c_str());
+    client->sendLightDBStream("/env/", historicalData.c_str());
 
     lastMillis = millis();
   }

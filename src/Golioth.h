@@ -9,7 +9,7 @@
 #include "GoliothClient.h"
 
 #ifndef GOLIOTH_MQTT_HOST
-#define GOLIOTH_MQTT_HOST "mqtt.golioth.net"
+#define GOLIOTH_MQTT_HOST "mqtt.golioth.io"
 #endif
 
 #ifndef GOLIOTH_MQTT_PORT
