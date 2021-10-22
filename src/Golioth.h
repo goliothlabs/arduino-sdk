@@ -18,5 +18,7 @@
 
 #define LIGHTDB_STATE_PREFIX "/.d/"
 #define LIGHTDB_STREAM_PREFIX "/.s/"
+#define DFU_DESIRED_PREFIX "/.u/desired"
+#define DFU_ARTIFACT_DOWNLOAD_PREFIX "/.u/c/"
 
 #endif // Golioth_h

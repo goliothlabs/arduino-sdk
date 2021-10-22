@@ -11,26 +11,6 @@ GoliothClient::GoliothClient()
   this->mqtt_client = new MqttClient(NULL);
 }
 
-/*GoliothClient::GoliothClient(Client *net)
-{
-  this->net = net;
-  this->mqtt_client = new MqttClient(net);
-}
-
-GoliothClient::GoliothClient(Client &net) : GoliothClient(&net)
-{
-}
-
-GoliothClient::GoliothClient(Client *net, const char *psk_id, const char *psk) : GoliothClient(net)
-{
-  this->psk_id = psk_id;
-  this->psk = psk;
-}
-
-GoliothClient::GoliothClient(Client &net, const char *psk_id, const char *psk) : GoliothClient(&net, psk_id, psk)
-{
-}*/
-
 void GoliothClient::poll()
 {
   this->mqtt_client->poll();
@@ -56,24 +36,95 @@ bool GoliothClient::connect()
 
 void GoliothClient::onMessage(int size)
 {
-  String topic = this->mqtt_client->messageTopic();
-  String payload = this->mqtt_client->readString();
+  MqttClient *client = this->mqtt_client;
+  String topic = client->messageTopic();
   if (!topic.startsWith("/"))
   {
     topic = "/" + topic;
   }
   if (topic.startsWith("/hello") && this->_onHello != NULL)
   {
+    String payload = "";
+    while (client->available())
+    {
+      payload += client->readString();
+    }
     this->_onHello(payload);
   }
   if (topic.startsWith("/echo") && this->_onHello != NULL)
   {
+    String payload = "";
+    while (client->available())
+    {
+      payload += client->readString();
+    }
     this->_onEcho(payload);
   }
   if (topic.startsWith(LIGHTDB_STATE_PREFIX) && this->_onLightDBMessage != NULL)
   {
     topic.replace(LIGHTDB_STATE_PREFIX, "");
+    String payload = "";
+    while (client->available())
+    {
+      payload += client->readString();
+    }
     this->_onLightDBMessage(topic, payload);
+  }
+  if (topic.startsWith("/.u/desired") && this->_onDesiredVersionChanged != NULL)
+  {
+    String payload = "";
+    while (client->available())
+    {
+      payload += client->readString();
+    }
+    StaticJsonDocument<256> doc;
+    deserializeJson(doc, payload);
+    JsonArray components = doc["components"].as<JsonArray>();
+    for (JsonVariant c : components)
+    {
+      JsonObject component = c.as<JsonObject>();
+      String version = "";
+      String pkg = "main";
+      String hash = "";
+      for (JsonPair kv : component)
+      {
+        String value = kv.value().as<String>();
+        if (strcmp(kv.key().c_str(), "package") == 0)
+        {
+          pkg = value;
+        }
+        if (strcmp(kv.key().c_str(), "hash") == 0)
+        {
+          hash = value;
+        }
+        if (strcmp(kv.key().c_str(), "version") == 0)
+        {
+          version = value;
+        }
+      }
+      this->_onDesiredVersionChanged(pkg, version, hash);
+    }
+  }
+  if (topic.startsWith("/.u/c/") && this->_onDownloadArtifact != NULL)
+  {
+    topic.replace("/.u/c/", "");
+    int atIndex = topic.indexOf("@");
+    String pkg = topic.substring(0, atIndex);
+    String version = topic.substring(atIndex + 1);
+    String payload = "";
+    uint8_t buf[1024];
+    int totalRead = 0;
+    int remaining = size;
+    this->_onDownloadArtifact(pkg, version, buf, 0, totalRead, size);
+    while (remaining > 0)
+    {
+      size_t bytesRead = client->readBytes(buf, 1024);
+      if (!bytesRead) // reading a byte with timeout
+        break;
+      totalRead += bytesRead;
+      this->_onDownloadArtifact(pkg, version, buf, bytesRead, totalRead, size);
+      remaining--;
+    }
   }
 }
 
@@ -137,6 +188,17 @@ void GoliothClient::sendLightDBStream(const char *path, const char *value)
   this->mqtt_client->beginMessage(this->joinPath(LIGHTDB_STREAM_PREFIX, path));
   this->mqtt_client->print(value);
   this->mqtt_client->endMessage();
+}
+
+void GoliothClient::listenDesiredVersion()
+{
+  this->mqtt_client->subscribe("/.u/desired");
+}
+
+void GoliothClient::downloadArtifact(const char *package, const char *version)
+{
+  this->mqtt_client->unsubscribe("/.u/c/" + String(package) + "@" + String(version));
+  this->mqtt_client->subscribe("/.u/c/" + String(package) + "@" + String(version));
 }
 
 void GoliothClient::sendLog(const char *level, const char *value)

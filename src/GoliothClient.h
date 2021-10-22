@@ -8,6 +8,7 @@
 
 #include <Arduino.h>
 #include <Client.h>
+#include <ArduinoJson.h>
 #include <ArduinoMqttClient.h>
 #include "Golioth.h"
 
@@ -20,6 +21,8 @@ private:
   MqttClient *mqtt_client;
 
   void (*_onLightDBMessage)(String path, String payload);
+  void (*_onDesiredVersionChanged)(String package, String version, String hash);
+  void (*_onDownloadArtifact)(String package, String version, uint8_t *buf, size_t bufSize, int current, int total);
   void (*_onHello)(String name);
   void (*_onEcho)(String payload);
 
@@ -63,6 +66,11 @@ public:
   void deleteLightDBStateAtPath(const char *path);
 
   void sendLightDBStream(const char *path, const char *value);
+
+  inline void onDesiredVersionChanged(void (*callback)(String, String, String)) { this->_onDesiredVersionChanged = callback; }
+  inline void onDownloadArtifact(void (*callback)(String, String, uint8_t *, size_t, int, int)) { this->_onDownloadArtifact = callback; }
+  void listenDesiredVersion();
+  void downloadArtifact(const char *package, const char *version);
 
   void logDebug(const char *msg);
   void logDebug(String msg);
