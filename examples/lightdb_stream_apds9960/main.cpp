@@ -31,15 +31,12 @@ GoliothClient *client = GoliothClient::getInstance();
 unsigned long lastMillis = 0;
 unsigned long counter = 0;
 
-void connect()
-{
+void connect() {
   Serial.print("checking wifi...");
   int tries = 0;
   WiFi.begin(WIFI_SSID, WIFI_PASS);
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    if (tries > 10)
-    {
+  while (WiFi.status() != WL_CONNECTED) {
+    if (tries > 10) {
       Serial.println("Wifi not connected");
       return;
     }
@@ -51,14 +48,15 @@ void connect()
 
   Serial.println("connecting to broker...");
   tries = 0;
+#ifdef ESP32
+  net.setCACert(GOLIOTH_ROOT_CA);
+#endif
 
   client->setClient(net);
   client->setPSKId(PSK_ID);
   client->setPSK(PSK);
-  while (!client->connect())
-  {
-    if (tries > 10)
-    {
+  while (!client->connect()) {
+    if (tries > 10) {
       Serial.println("Broker not connected");
       return;
     }
@@ -69,20 +67,15 @@ void connect()
 
   Serial.println("Connected to Golioth");
 
-  client->onHello([](String name)
-                  { Serial.println(name); });
+  client->onHello([](String name) { Serial.println(name); });
   client->listenHello();
 }
 
-void setup()
-{
+void setup() {
   Serial.begin(115200);
-  if (apds.init())
-  {
+  if (apds.init()) {
     Serial.println(F("APDS-9960 initialization complete"));
-  }
-  else
-  {
+  } else {
     Serial.println(F("Something went wrong during APDS-9960 init!"));
   }
   apds.enableLightSensor(false);
@@ -92,17 +85,14 @@ void setup()
   connect();
 }
 
-void loop()
-{
+void loop() {
   client->poll();
 
-  if (!net.connected() || !client->connected())
-  {
+  if (!net.connected() || !client->connected()) {
     connect();
   }
 
-  if (millis() - lastMillis > 5 * 1000)
-  {
+  if (millis() - lastMillis > 5 * 1000) {
     lastMillis = millis();
     counter++;
     uint8_t proximity = 0;
@@ -115,8 +105,12 @@ void loop()
     apds.readGreenLight(g);
     apds.readBlueLight(b);
     apds.readAmbientLight(lux);
-    String historicalData = "{\"lux\":" + String(lux) + ", \"proximity\":" + String(proximity) + ", \"r\":" + String(r) + ", \"g\":" + String(g) + ", \"b\":" + String(b) + "}";
-    String rtData = "{\"counter\":" + String(counter) + ",\"env\":" + historicalData + "}";
+    String historicalData = "{\"lux\":" + String(lux) +
+                            ", \"proximity\":" + String(proximity) +
+                            ", \"r\":" + String(r) + ", \"g\":" + String(g) +
+                            ", \"b\":" + String(b) + "}";
+    String rtData =
+        "{\"counter\":" + String(counter) + ",\"env\":" + historicalData + "}";
     Serial.println("Updating `state` to " + rtData);
     Serial.println("Sending timeseries " + historicalData);
 

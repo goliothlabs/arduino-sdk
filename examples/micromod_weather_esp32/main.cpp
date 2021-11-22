@@ -80,6 +80,10 @@ void connect() {
   Serial.println("connecting to broker...");
   tries = 0;
 
+#ifdef ESP32
+  net.setCACert(GOLIOTH_ROOT_CA);
+#endif
+
   client->setClient(net);
   client->setPSKId(PSK_ID);
   client->setPSK(PSK);
