@@ -71,7 +71,7 @@ void connect() {
   }
   Serial.println("\nconnected to WiFi!\n");
 
-  Serial.println("connecting to broker...");
+  Serial.println("connecting to cloud gateway...");
   tries = 0;
 
 #ifdef ESP32
@@ -83,7 +83,7 @@ void connect() {
   client->setPSK(PSK);
   while (!client->connect()) {
     if (tries > 10) {
-      Serial.println("Broker not connected");
+      Serial.println("not connected");
       return;
     }
     Serial.print(".");

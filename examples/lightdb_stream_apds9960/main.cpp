@@ -46,7 +46,7 @@ void connect() {
   }
   Serial.println("Connected to WiFi!");
 
-  Serial.println("connecting to broker...");
+  Serial.println("connecting to cloud gateway...");
   tries = 0;
 #ifdef ESP32
   net.setCACert(GOLIOTH_ROOT_CA);
@@ -57,7 +57,7 @@ void connect() {
   client->setPSK(PSK);
   while (!client->connect()) {
     if (tries > 10) {
-      Serial.println("Broker not connected");
+      Serial.println("not connected");
       return;
     }
     Serial.print(".");
