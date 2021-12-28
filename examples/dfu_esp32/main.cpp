@@ -1,7 +1,10 @@
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#include <FS.h>
 #include <Golioth.h>
+#include <Preferences.h>
+#include <SPIFFS.h>
 #include <Update.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
@@ -15,6 +18,55 @@ GoliothClient *client = GoliothClient::getInstance();
 
 unsigned long lastMillis = 0;
 unsigned long counter = 0;
+
+Preferences preferences;
+File *tmpFile;
+
+void onDownloadArtifact(String pkg, String version, uint8_t *buf,
+                        size_t buf_size, int current, int total) {
+  Serial.print("Downloading " + pkg + " " + version + " " + String(current) +
+               "/" + String(total) + " ");
+  Serial.print(buf_size);
+  Serial.println(" bytes");
+  if (current == 0) {
+    if (pkg == "main") {
+      if (!Update.begin(total)) {
+        Serial.println("Not enough space to begin OTA");
+      }
+    } else {
+      File t = SPIFFS.open("/artifacts/" + pkg, "w");
+      tmpFile = &t;
+    }
+  }
+  if (buf_size) {
+    if (pkg == "main") {
+      Update.write(buf, buf_size);
+    } else if (tmpFile != NULL) {
+      tmpFile->write(buf, buf_size);
+    }
+  }
+  if (current >= total) {
+    if (pkg == "main") {
+      if (Update.end()) {
+        Serial.println("Update complete");
+        if (Update.isFinished()) {
+          Serial.println("Update successfully completed. Rebooting.");
+          ESP.restart();
+        } else {
+          Serial.println("Update not finished? Something went wrong!");
+        }
+      } else {
+        Serial.println("Error Occurred. Error #: " + String(Update.getError()));
+      }
+    }
+  } else if (tmpFile != NULL) {
+    Serial.println("Download pkg complete");
+    tmpFile->close();
+    tmpFile = NULL;
+    preferences.putString(pkg.c_str(), version);
+    ESP.restart();
+  }
+}
 
 void connect() {
   Serial.print("checking wifi...");
@@ -58,41 +110,27 @@ void connect() {
     if (pkg == "main" && version != CURRENT_VERSION) {
       Serial.println("Update available");
       client->downloadArtifact(pkg.c_str(), version.c_str());
-    }
-  });
-  client->onDownloadArtifact([](String pkg, String version, uint8_t *buf,
-                                size_t buf_size, int current, int total) {
-    Serial.print("Downloading " + pkg + " " + version + " " + String(current) +
-                 "/" + String(total) + " ");
-    Serial.print(buf_size);
-    Serial.println(" bytes");
-    if (current == 0) {
-      if (!Update.begin(total)) {
-        Serial.println("Not enough space to begin OTA");
-      }
-    }
-    if (buf_size) {
-      Update.write(buf, buf_size);
-    }
-    if (current >= total) {
-      if (Update.end()) {
-        Serial.println("Update complete");
-        if (Update.isFinished()) {
-          Serial.println("Update successfully completed. Rebooting.");
-          ESP.restart();
-        } else {
-          Serial.println("Update not finished? Something went wrong!");
-        }
+    } else {
+      Serial.println("Check pkg `" + pkg + "` download");
+      String pkgVersion = preferences.getString(pkg.c_str(), "");
+      if (pkgVersion != version) {
+        Serial.println("Download pkg");
+        client->downloadArtifact(pkg.c_str(), version.c_str());
       } else {
-        Serial.println("Error Occurred. Error #: " + String(Update.getError()));
+        Serial.println("Pkg `" + pkg + "` at version " + version +
+                       " is up to date");
       }
     }
   });
+  client->onDownloadArtifact(onDownloadArtifact);
   client->listenDesiredVersion();
 }
 
 void setup() {
   Serial.begin(115200);
+  SPIFFS.begin(true);
+  preferences.begin("app", false);
+  delay(100);
   connect();
   Serial.println("Starting with version " + String(CURRENT_VERSION));
 }
