@@ -13,6 +13,10 @@ GoliothClient::GoliothClient()
 
 void GoliothClient::poll()
 {
+  if (this->mqtt_client == NULL)
+  {
+    return;
+  }
   this->mqtt_client->poll();
 }
 
@@ -130,6 +134,10 @@ void GoliothClient::onMessage(int size)
 
 bool GoliothClient::connected()
 {
+  if (this->mqtt_client == NULL)
+  {
+    return false;
+  }
   return this->mqtt_client->connected();
 }
 
