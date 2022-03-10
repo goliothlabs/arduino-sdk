@@ -1,6 +1,6 @@
 ### Provisioning device credentials over USB/Serial
 
-Example showing how to remove Golioth credentials from the firmware code and setting them up over USB/Serial. This is useful for having the same firmware for your whole fleet of devices and being able to set up them later with they specific credentials.
+Example showing how to remove Golioth credentials from the firmware code and setting them up over USB/Serial. This is useful for having the same firmware for your whole fleet of devices and being able to set up them later with their specific credentials.
 
 > Configuration is saved on ESP32 NVS Store.
 
