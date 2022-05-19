@@ -54,11 +54,16 @@ void onLightDBMessage(String path, String payload) {
     StaticJsonDocument<256> doc;
     deserializeJson(doc, payload);
 
+    bool clearBuzz = false;
+    bool stateChanged = false;
     if (doc.containsKey("buzz")) {
-      digitalWrite(SPEAKER_SHUTDOWN, HIGH);
-      play_tune(audio, sizeof(audio));
-      digitalWrite(SPEAKER_SHUTDOWN, LOW);
-      client->deleteLightDBStateAtPath("/desired/buzz");
+      String value = doc["buzz"].as<String>();
+      if (!value.equals("0")) {
+        digitalWrite(SPEAKER_SHUTDOWN, HIGH);
+        play_tune(audio, sizeof(audio));
+        digitalWrite(SPEAKER_SHUTDOWN, LOW);
+        clearBuzz = true;
+      }
     }
 
     JsonObject leds = doc["leds"].as<JsonObject>();
@@ -68,6 +73,7 @@ void onLightDBMessage(String path, String payload) {
         if (!value.equals(currentColor0)) {
           Serial.println("Changing LED0");
           currentColor0 = value;
+          stateChanged = true;
           setHexColor(0, value);
         }
       }
@@ -75,6 +81,7 @@ void onLightDBMessage(String path, String payload) {
         if (!value.equals(currentColor1)) {
           Serial.println("Changing LED1");
           currentColor1 = value;
+          stateChanged = true;
           setHexColor(1, value);
         }
       }
@@ -82,6 +89,7 @@ void onLightDBMessage(String path, String payload) {
         if (!value.equals(currentColor2)) {
           Serial.println("Changing LED2");
           currentColor2 = value;
+          stateChanged = true;
           setHexColor(2, value);
         }
       }
@@ -89,6 +97,7 @@ void onLightDBMessage(String path, String payload) {
         if (!value.equals(currentColor3)) {
           Serial.println("Changing LED3");
           currentColor3 = value;
+          stateChanged = true;
           setHexColor(3, value);
         }
       }
@@ -98,6 +107,7 @@ void onLightDBMessage(String path, String payload) {
       String msg = doc["text"].as<String>();
       if (!msg.equals(currentText)) {
         currentText = msg;
+        stateChanged = true;
         display.clearBuffer();
         display.setTextSize(3);
         display.setTextColor(EPD_BLACK);
@@ -118,12 +128,18 @@ void onLightDBMessage(String path, String payload) {
         display.display();
       }
     }
+
     if (client->connected()) {
-      String textToSend = currentText;
-      textToSend.replace("\n", "\\n");
-      String state = "{\"leds\": { \"0\": \"" + currentColor0 + "\", \"1\": \"" + currentColor1 + "\", \"2\": \"" + currentColor2 + "\", \"3\": \"" + currentColor3+ "\" },\"text\": \"" + String(textToSend) + "\" }";
-      Serial.println("sending: " + state);
-      client->setLightDBStateAtPath("/state", state.c_str());
+      if (stateChanged) {
+        String textToSend = currentText;
+        textToSend.replace("\n", "\\n");
+        String state = "{\"leds\": { \"0\": \"" + currentColor0 + "\", \"1\": \"" + currentColor1 + "\", \"2\": \"" + currentColor2 + "\", \"3\": \"" + currentColor3+ "\" },\"text\": \"" + String(textToSend) + "\" }";
+        Serial.println("sending: " + state);
+        client->setLightDBStateAtPath("/state", state.c_str());
+      }
+      if (clearBuzz) {
+        client->setLightDBStateAtPath("/desired/buzz", "0");
+      }
     }
   }
 }
