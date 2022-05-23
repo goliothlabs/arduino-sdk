@@ -12,6 +12,11 @@
 #include <ArduinoMqttClient.h>
 #include "Golioth.h"
 
+typedef struct {
+  String method;
+  void(*callback)(String,JsonArray);
+} goliothCallback;
+
 class GoliothClient
 {
 private:
@@ -19,6 +24,9 @@ private:
   const char *psk;
   Client *net;
   MqttClient *mqtt_client;
+  bool function_registered = false;
+  int num_registered_functions = 0;
+  goliothCallback callbacks[8];
 
   void (*_onLightDBMessage)(String path, String payload);
   void (*_onDesiredVersionChanged)(String package, String version, String hash);
@@ -71,6 +79,9 @@ public:
   inline void onDownloadArtifact(void (*callback)(String, String, uint8_t *, size_t, int, int)) { this->_onDownloadArtifact = callback; }
   void listenDesiredVersion();
   void downloadArtifact(const char *package, const char *version);
+
+  void onRemoteFunction(const char *name, void(*callback)(String,JsonArray));
+  void ackRemoteFunction(String id, uint status_code);
 
   void logDebug(const char *msg);
   void logDebug(String msg);

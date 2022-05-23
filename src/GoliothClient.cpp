@@ -130,6 +130,26 @@ void GoliothClient::onMessage(int size)
       remaining--;
     }
   }
+  if (topic.startsWith(RPC_PREFIX) && this->function_registered)
+  {
+    String payload = "";
+    while (client->available())
+    {
+      payload += client->readString();
+    }
+    StaticJsonDocument<256> doc;
+    deserializeJson(doc, payload);
+    String method = doc["method"].as<String>();
+    for (int i = 0; i < this->num_registered_functions; i++)
+    {
+      if (this->callbacks[i].method == method)
+      {
+        String id = doc["id"].as<String>();
+        JsonArray params = doc["params"].as<JsonArray>();
+        this->callbacks[i].callback(id, params);
+      }
+    }
+  }
 }
 
 bool GoliothClient::connected()
@@ -175,6 +195,26 @@ void GoliothClient::sendEcho(const char *value)
 void GoliothClient::listenLightDBStateAtPath(const char *path)
 {
   this->mqtt_client->subscribe(this->joinPath(LIGHTDB_STATE_PREFIX, path));
+}
+
+void GoliothClient::onRemoteFunction(const char *name, void(*callback)(String callID, JsonArray params))
+{
+  if (!this->function_registered){
+    this->mqtt_client->subscribe(RPC_PREFIX);
+    this->function_registered = true;
+  }
+  this->callbacks[this->num_registered_functions] = goliothCallback{
+    method: String(name),
+    callback: callback
+  };
+  this->num_registered_functions++;
+}
+
+void GoliothClient::ackRemoteFunction(String id, uint status_code)
+{
+  this->mqtt_client->beginMessage(this->joinPath(RPC_FULL_PREFIX, id.c_str()));
+  this->mqtt_client->print(String(status_code, 10));
+  this->mqtt_client->endMessage();
 }
 
 void GoliothClient::setLightDBStateAtPath(const char *path, const char *value)
