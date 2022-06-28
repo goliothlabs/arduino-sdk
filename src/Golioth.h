@@ -9,11 +9,13 @@
 #include "GoliothClient.h"
 
 #ifndef GOLIOTH_MQTT_HOST
-#define GOLIOTH_MQTT_HOST "mqtt.golioth.io"
+//#define GOLIOTH_MQTT_HOST "mqtt.golioth.io"
+#define GOLIOTH_MQTT_HOST "192.168.86.20"
 #endif
 
 #ifndef GOLIOTH_MQTT_PORT
-#define GOLIOTH_MQTT_PORT 8883
+//#define GOLIOTH_MQTT_PORT 8883
+#define GOLIOTH_MQTT_PORT 1883
 #endif
 
 #define LIGHTDB_STATE_PREFIX "/.d/"

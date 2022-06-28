@@ -140,14 +140,20 @@ void GoliothClient::onMessage(int size)
     StaticJsonDocument<256> doc;
     deserializeJson(doc, payload);
     String method = doc["method"].as<String>();
+    bool found_method = false;
+    String id = doc["id"].as<String>();
     for (int i = 0; i < this->num_registered_functions; i++)
     {
       if (this->callbacks[i].method == method)
-      {
-        String id = doc["id"].as<String>();
+      {        
         JsonArray params = doc["params"].as<JsonArray>();
         this->callbacks[i].callback(id, params);
+        found_method = true;
+        break;
       }
+    }
+    if (!found_method) {
+      this->ackRemoteFunction(id, RPC_UNAVAILABLE);
     }
   }
 }
@@ -212,8 +218,15 @@ void GoliothClient::onRemoteFunction(const char *name, void(*callback)(String ca
 
 void GoliothClient::ackRemoteFunction(String id, uint status_code)
 {
-  this->mqtt_client->beginMessage(this->joinPath(RPC_FULL_PREFIX, id.c_str()));
-  this->mqtt_client->print(String(status_code, 10));
+  this->mqtt_client->beginMessage(this->joinPath(RPC_FULL_PREFIX, "status"));
+  this->mqtt_client->print("{ \"id\": \"" + id + "\", \"statusCode\": "+ String(status_code,10) + "}");
+  this->mqtt_client->endMessage();
+}
+
+void GoliothClient::ackRemoteFunction(String id, uint status_code, String detail)
+{
+  this->mqtt_client->beginMessage(this->joinPath(RPC_FULL_PREFIX, "status"));  
+  this->mqtt_client->print("{ \"id\": \"" + id + "\", \"statusCode\": "+ String(status_code,10) + ", \"detail\": \"" + detail + "\" }");
   this->mqtt_client->endMessage();
 }
 

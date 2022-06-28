@@ -66,6 +66,9 @@ void connect()
     delay(1000);
     ESP.restart();
   });
+  client->onRemoteFunction("random", [](String callID, JsonArray params){
+    client->ackRemoteFunction(callID, RPC_OK, String(rand()));    
+  });
   client->onRemoteFunction("toggle", [](String callID, JsonArray params)
                              {
                                Serial.println("toggle");
