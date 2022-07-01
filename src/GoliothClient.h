@@ -82,6 +82,7 @@ public:
 
   void onRemoteFunction(const char *name, void(*callback)(String,JsonArray));
   void ackRemoteFunction(String id, uint status_code);
+  void ackRemoteFunction(String id, uint status_code, String detail);
 
   void logDebug(const char *msg);
   void logDebug(String msg);
