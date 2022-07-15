@@ -18,8 +18,28 @@
 
 #define LIGHTDB_STATE_PREFIX "/.d/"
 #define LIGHTDB_STREAM_PREFIX "/.s/"
+#define RPC_PREFIX "/.rpc"
+#define RPC_FULL_PREFIX "/.rpc/"
 #define DFU_DESIRED_PREFIX "/.u/desired"
 #define DFU_ARTIFACT_DOWNLOAD_PREFIX "/.u/c/"
+
+#define RPC_OK 0
+#define RPC_CANCELED 1
+#define RPC_UNKNOWN 2
+#define RPC_INVALID_ARGUMENT 3
+#define RPC_DEADLINE_EXCEEDED 4
+#define RPC_NOT_FOUND 5
+#define RPC_ALREADYEXISTS 6
+#define RPC_PERMISSION_DENIED 7
+#define RPC_RESOURCE_EXHAUSTED 8
+#define RPC_FAILED_PRECONDITION 9
+#define RPC_ABORTED 10
+#define RPC_OUT_OF_RANGE 11
+#define RPC_UNIMPLEMENTED 12
+#define RPC_INTERNAL 13
+#define RPC_UNAVAILABLE 14
+#define RPC_DATA_LOSS 15
+#define RPC_UNAUTHENTICATED 16
 
 // Let's Encrypt certificate
 // Downloaded from https://letsencrypt.org/certs/isrg-root-x1-cross-signed.pem
