@@ -1,6 +1,15 @@
+## Repository Has Been Archived
+
+> :bulb: This repository has been archived and should not be used. GoliothLabs
+> has two experimental repositories that may serve as replacements for this one:
+> * [Golioth using ESP-IDF with
+>   Arduino](https://github.com/goliothlabs/golioth_espidf_arduino)
+> * [Golioth using PlatformIO with
+>   Arduino](https://github.com/goliothlabs/golioth_platformio_arduino)
+
 > :warning: This project is considered experimental and is not recommended for production use. Functionality may break at any time.
 
-> :heavy_exclamation_mark: This SDK is currently no longer functioning as a result of the MQTT BETA ending. Migration to CoAP is being evaluated but not currently planned.
+> :heavy_exclamation_mark: This SDK is currently no longer functioning as a result of the MQTT BETA ending.
 
 ## Golioth Arduino SDK
 
